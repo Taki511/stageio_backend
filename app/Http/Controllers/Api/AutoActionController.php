@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Models\CompanyProfile;
+use App\Models\InternshipOffer;
 use App\Services\AutoActionService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class AutoActionController extends Controller
 {
@@ -17,7 +21,7 @@ class AutoActionController extends Controller
     /**
      * Get auto-action status for the authenticated user.
      */
-    public function status(Request $request)
+    public function status(Request $request): JsonResponse
     {
         $now = Carbon::now();
         
@@ -41,17 +45,18 @@ class AutoActionController extends Controller
     /**
      * Get student auto-action status.
      */
-    private function getStudentStatus(int $studentId, Carbon $now): array
+    private function getStudentStatus(int $studentId, Carbon $now): JsonResponse
     {
         // Pending applications (waiting for recruiter)
         $pendingApplications = Application::where('student_id', $studentId)
             ->where('status', Application::STATUS_PENDING)
+            ->with('internshipOffer')
             ->get()
             ->map(function ($app) use ($now) {
                 $daysLeft = self::RECRUITER_RESPONSE_DAYS - $app->created_at->diffInDays($now);
                 return [
                     'application_id' => $app->id,
-                    'offer_title' => $app->internshipOffer->title,
+                    'offer_title' => $app->internshipOffer?->title ?? 'N/A',
                     'status' => $app->status,
                     'days_waiting' => $app->created_at->diffInDays($now),
                     'days_until_auto_cancel' => max(0, round($daysLeft)),
@@ -63,12 +68,13 @@ class AutoActionController extends Controller
         $acceptedApplications = Application::where('student_id', $studentId)
             ->where('status', Application::STATUS_ACCEPTED)
             ->where('is_confirmed', false)
+            ->with('internshipOffer')
             ->get()
             ->map(function ($app) use ($now) {
                 $daysLeft = self::STUDENT_CONFIRM_DAYS - $app->updated_at->diffInDays($now);
                 return [
                     'application_id' => $app->id,
-                    'offer_title' => $app->internshipOffer->title,
+                    'offer_title' => $app->internshipOffer?->title ?? 'N/A',
                     'status' => $app->status,
                     'days_waiting' => $app->updated_at->diffInDays($now),
                     'days_until_auto_cancel' => max(0, round($daysLeft)),
@@ -81,16 +87,18 @@ class AutoActionController extends Controller
             ->where('status', Application::STATUS_ACCEPTED)
             ->where('is_confirmed', true)
             ->whereDoesntHave('internship')
+            ->with('internshipOffer')
             ->get()
             ->map(function ($app) use ($now) {
-                $daysLeft = self::ADMIN_VALIDATE_DAYS - $app->confirmed_at->diffInDays($now);
+                $confirmedAt = $app->confirmed_at ?? $app->updated_at;
+                $daysLeft = self::ADMIN_VALIDATE_DAYS - $confirmedAt->diffInDays($now);
                 return [
                     'application_id' => $app->id,
-                    'offer_title' => $app->internshipOffer->title,
+                    'offer_title' => $app->internshipOffer?->title ?? 'N/A',
                     'status' => 'confirmed_pending_validation',
-                    'days_waiting' => $app->confirmed_at->diffInDays($now),
+                    'days_waiting' => $confirmedAt->diffInDays($now),
                     'days_until_auto_validate' => max(0, round($daysLeft)),
-                    'confirmed_at' => $app->confirmed_at->toDateTimeString(),
+                    'confirmed_at' => $confirmedAt->toDateTimeString(),
                 ];
             });
 
@@ -111,29 +119,40 @@ class AutoActionController extends Controller
     /**
      * Get recruiter auto-action status.
      */
-    private function getRecruiterStatus(int $recruiterId, Carbon $now): array
+    private function getRecruiterStatus(int $recruiterId, Carbon $now): JsonResponse
     {
-        $companyProfile = \App\Models\CompanyProfile::where('recruiter_id', $recruiterId)->first();
+        $companyProfile = CompanyProfile::where('recruiter_id', $recruiterId)->first();
         
         if (!$companyProfile) {
             return response()->json([
+                'timezone' => config('app.timezone'),
+                'current_time' => $now->toDateTimeString(),
+                'pending_applications' => [],
                 'message' => 'No company profile found.',
+                'rules' => [
+                    'recruiter_response_days' => self::RECRUITER_RESPONSE_DAYS,
+                ],
             ]);
         }
 
-        $offerIds = \App\Models\InternshipOffer::where('company_profile_id', $companyProfile->id)
+        $offerIds = InternshipOffer::where('company_profile_id', $companyProfile->id)
             ->pluck('id');
 
         $pendingApplications = Application::whereIn('internship_offer_id', $offerIds)
             ->where('status', Application::STATUS_PENDING)
-            ->with('student', 'internshipOffer')
+            ->with(['student.studentProfile', 'internshipOffer'])
             ->get()
             ->map(function ($app) use ($now) {
+                $studentProfile = $app->student?->studentProfile;
+                $studentName = $studentProfile 
+                    ? $studentProfile->first_name . ' ' . $studentProfile->last_name
+                    : ($app->student?->name ?? 'Unknown');
+                
                 $daysLeft = self::RECRUITER_RESPONSE_DAYS - $app->created_at->diffInDays($now);
                 return [
                     'application_id' => $app->id,
-                    'student_name' => $app->student->name,
-                    'offer_title' => $app->internshipOffer->title,
+                    'student_name' => $studentName,
+                    'offer_title' => $app->internshipOffer?->title ?? 'N/A',
                     'days_waiting' => $app->created_at->diffInDays($now),
                     'days_until_auto_cancel' => max(0, round($daysLeft)),
                     'applied_at' => $app->created_at->toDateTimeString(),
@@ -153,22 +172,28 @@ class AutoActionController extends Controller
     /**
      * Get admin auto-action status.
      */
-    private function getAdminStatus(Carbon $now): array
+    private function getAdminStatus(Carbon $now): JsonResponse
     {
         $confirmedApplications = Application::where('status', Application::STATUS_ACCEPTED)
             ->where('is_confirmed', true)
             ->whereDoesntHave('internship')
-            ->with('student', 'internshipOffer')
+            ->with(['student.studentProfile', 'internshipOffer'])
             ->get()
             ->map(function ($app) use ($now) {
-                $daysLeft = self::ADMIN_VALIDATE_DAYS - $app->confirmed_at->diffInDays($now);
+                $studentProfile = $app->student?->studentProfile;
+                $studentName = $studentProfile 
+                    ? $studentProfile->first_name . ' ' . $studentProfile->last_name
+                    : ($app->student?->name ?? 'Unknown');
+                
+                $confirmedAt = $app->confirmed_at ?? $app->updated_at;
+                $daysLeft = self::ADMIN_VALIDATE_DAYS - $confirmedAt->diffInDays($now);
                 return [
                     'application_id' => $app->id,
-                    'student_name' => $app->student->name,
-                    'offer_title' => $app->internshipOffer->title,
-                    'days_waiting' => $app->confirmed_at->diffInDays($now),
+                    'student_name' => $studentName,
+                    'offer_title' => $app->internshipOffer?->title ?? 'N/A',
+                    'days_waiting' => $confirmedAt->diffInDays($now),
                     'days_until_auto_validate' => max(0, round($daysLeft)),
-                    'confirmed_at' => $app->confirmed_at->toDateTimeString(),
+                    'confirmed_at' => $confirmedAt->toDateTimeString(),
                 ];
             });
 
@@ -185,7 +210,7 @@ class AutoActionController extends Controller
     /**
      * Manually trigger auto-actions (admin only).
      */
-    public function trigger(Request $request, AutoActionService $service)
+    public function trigger(Request $request, AutoActionService $service): JsonResponse
     {
         if (!$request->user()->isAdmin()) {
             return response()->json([

@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
 class PasswordResetController extends Controller
@@ -33,9 +34,8 @@ class PasswordResetController extends Controller
         // Generate reset token
         $token = Str::random(64);
         
-        // Store token in database (you may want to create a password_resets table)
-        // For now, we'll use a simple approach
-        \DB::table('password_reset_tokens')->updateOrInsert(
+        // Store token in database
+        DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $user->email],
             [
                 'token' => Hash::make($token),
@@ -57,12 +57,12 @@ class PasswordResetController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required|email|exists:users,email',
             'token' => 'required|string',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $resetRecord = \DB::table('password_reset_tokens')
+        $resetRecord = DB::table('password_reset_tokens')
             ->where('email', $request->email)
             ->first();
 
@@ -73,7 +73,11 @@ class PasswordResetController extends Controller
         }
 
         // Check if token is valid (expires after 60 minutes)
-        if (now()->diffInMinutes($resetRecord->created_at) > 60) {
+        $createdAt = $resetRecord->created_at instanceof Carbon 
+            ? $resetRecord->created_at 
+            : Carbon::parse($resetRecord->created_at);
+        
+        if (now()->diffInMinutes($createdAt) > 60) {
             return response()->json([
                 'message' => 'Reset token has expired.',
             ], 400);
@@ -88,10 +92,17 @@ class PasswordResetController extends Controller
 
         // Update password
         $user = User::where('email', $request->email)->first();
+        
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+        
         $user->update(['password' => Hash::make($request->password)]);
 
         // Delete reset token
-        \DB::table('password_reset_tokens')
+        DB::table('password_reset_tokens')
             ->where('email', $request->email)
             ->delete();
 
