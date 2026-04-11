@@ -114,7 +114,7 @@ class NotificationService
     {
         $data = [
             'user_name' => $user->name,
-            'reset_url' => config('app.url') . '/reset-password?token=' . $resetToken . '&email=' . urlencode($user->email),
+            'reset_url' => rtrim(config('app.url'), '/') . '/api/reset-password?token=' . $resetToken . '&email=' . urlencode($user->email),
             'expires_in' => '60 minutes',
         ];
         
