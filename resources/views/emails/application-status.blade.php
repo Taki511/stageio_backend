@@ -22,7 +22,7 @@ If you don't confirm within this period, your application will be automatically 
 {{ $data['action_text'] }}
 </x-mail::button>
 
-@once you confirm, all your other accepted applications will be automatically cancelled.
+**Note:** Once you confirm, all your other accepted applications will be automatically cancelled.
 @break
 
 @case('application_refused')

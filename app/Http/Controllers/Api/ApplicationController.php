@@ -433,7 +433,7 @@ class ApplicationController extends Controller
             ], 403);
         }
 
-        $application = Application::with('internshipOffer')->find($id);
+        $application = Application::with(['internshipOffer', 'internship'])->find($id);
 
         if (!$application) {
             return response()->json([
@@ -447,7 +447,7 @@ class ApplicationController extends Controller
             ], 403);
         }
 
-        if ($application->internship) {
+        if ($application->internship()->exists()) {
             return response()->json([
                 'message' => 'Cannot cancel application. Internship has already been created.',
             ], 400);
