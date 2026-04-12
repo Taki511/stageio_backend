@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Models\Internship;
 use App\Models\InternshipOffer;
 use App\Models\StudentCV;
 use App\Services\NotificationService;
@@ -101,14 +102,17 @@ class ApplicationController extends Controller
             ], 400);
         }
 
-        // Check if student already has a confirmed application
-        $hasConfirmed = Application::where('student_id', $student->id)
+        // Check if student has an active (non-completed) confirmed application
+        $activeConfirmedApplication = Application::where('student_id', $student->id)
             ->where('is_confirmed', true)
+            ->whereDoesntHave('internship', function ($query) {
+                $query->where('status', Internship::STATUS_COMPLETED);
+            })
             ->exists();
 
-        if ($hasConfirmed) {
+        if ($activeConfirmedApplication) {
             return response()->json([
-                'message' => 'You have already confirmed an internship. You cannot apply to other offers.',
+                'message' => 'You have an active internship. You can only apply after your current internship is completed.',
             ], 400);
         }
 
@@ -223,10 +227,22 @@ class ApplicationController extends Controller
         
         $remaining = max(0, self::DAILY_APPLICATION_LIMIT - $count);
 
-        // Check if student has confirmed application
-        $confirmedApplication = Application::where('student_id', $studentId)
+        // Check if student has an active confirmed application (not completed)
+        $activeConfirmedApplication = Application::where('student_id', $studentId)
             ->where('is_confirmed', true)
+            ->whereDoesntHave('internship', function ($query) {
+                $query->where('status', Internship::STATUS_COMPLETED);
+            })
             ->with('internshipOffer')
+            ->first();
+
+        // Check if student has a completed internship
+        $completedInternship = Application::where('student_id', $studentId)
+            ->where('is_confirmed', true)
+            ->whereHas('internship', function ($query) {
+                $query->where('status', Internship::STATUS_COMPLETED);
+            })
+            ->with(['internshipOffer', 'internship'])
             ->first();
 
         return response()->json([
@@ -234,8 +250,11 @@ class ApplicationController extends Controller
             'applied_today' => $count,
             'remaining_today' => $remaining,
             'reset_at' => Carbon::tomorrow()->format('Y-m-d H:i:s'),
-            'has_confirmed_application' => $confirmedApplication !== null,
-            'confirmed_application' => $confirmedApplication,
+            'can_apply' => $activeConfirmedApplication === null,
+            'has_active_internship' => $activeConfirmedApplication !== null,
+            'active_internship' => $activeConfirmedApplication,
+            'has_completed_internship' => $completedInternship !== null,
+            'completed_internship' => $completedInternship,
         ]);
     }
 
