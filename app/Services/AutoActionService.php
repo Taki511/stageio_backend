@@ -192,6 +192,32 @@ class AutoActionService
     }
 
     /**
+     * Auto-complete internships that have passed their end date.
+     */
+    public function autoCompleteInternships(): int
+    {
+        $today = Carbon::now()->startOfDay();
+        
+        $internships = Internship::where('status', Internship::STATUS_ONGOING)
+            ->where('end_date', '<', $today)
+            ->get();
+
+        $count = 0;
+        foreach ($internships as $internship) {
+            $internship->update(['status' => Internship::STATUS_COMPLETED]);
+            $count++;
+            
+            Log::info('Auto-completed internship', [
+                'internship_id' => $internship->id,
+                'application_id' => $internship->application_id,
+                'end_date' => $internship->end_date->toDateString(),
+            ]);
+        }
+
+        return $count;
+    }
+
+    /**
      * Run all auto-actions.
      */
     public function runAll(): array
@@ -200,6 +226,7 @@ class AutoActionService
             'pending_cancelled' => $this->autoCancelPendingApplications(),
             'unconfirmed_cancelled' => $this->autoCancelUnconfirmedApplications(),
             'confirmed_validated' => $this->autoValidateConfirmedApplications(),
+            'internships_completed' => $this->autoCompleteInternships(),
             'timestamp' => Carbon::now()->toDateTimeString(),
         ];
     }

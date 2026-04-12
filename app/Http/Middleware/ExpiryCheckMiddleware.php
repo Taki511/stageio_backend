@@ -40,6 +40,9 @@ class ExpiryCheckMiddleware
     {
         $user = $request->user();
 
+        // Auto-complete internships that have passed end date (for all users)
+        $this->autoActionService->autoCompleteInternships();
+
         if ($user->isStudent()) {
             $this->checkStudentApplications($user->id);
         }

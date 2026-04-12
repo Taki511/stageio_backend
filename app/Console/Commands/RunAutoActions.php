@@ -40,6 +40,7 @@ class RunAutoActions extends Command
                 ['Pending applications cancelled (14 days)', $results['pending_cancelled']],
                 ['Unconfirmed applications cancelled (14 days)', $results['unconfirmed_cancelled']],
                 ['Confirmed applications validated (7 days)', $results['confirmed_validated']],
+                ['Internships auto-completed (end date passed)', $results['internships_completed']],
             ]
         );
 
