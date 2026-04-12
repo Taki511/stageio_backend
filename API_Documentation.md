@@ -15,16 +15,17 @@ Authorization: Bearer {your_token_here}
 
 ## Table of Contents
 1. [Authentication](#authentication-endpoints)
-2. [Student CV](#student-cv-endpoints)
-3. [Company Profile](#company-profile-endpoints)
-4. [Internship Offers (Public)](#internship-offers-public)
-5. [Internship Offers (Recruiter)](#internship-offers-recruiter)
-6. [Applications (Student)](#applications-student)
-7. [Applications (Recruiter)](#applications-recruiter)
-8. [Admin Validation](#admin-validation)
-9. [Admin Agreements](#admin-agreements)
-10. [Auto-Actions Status](#auto-actions-status-all-users)
-11. [Role-Based Dashboards](#role-based-dashboards)
+2. [Password Reset](#password-reset)
+3. [Student CV](#student-cv-endpoints)
+4. [Company Profile](#company-profile-endpoints)
+5. [Internship Offers (Public)](#internship-offers-public)
+6. [Internship Offers (Recruiter)](#internship-offers-recruiter)
+7. [Applications (Student)](#applications-student)
+8. [Applications (Recruiter)](#applications-recruiter)
+9. [Admin Validation](#admin-validation)
+10. [Admin Agreements](#admin-agreements)
+11. [Auto-Actions Status](#auto-actions-status-all-users)
+12. [Role-Based Dashboards](#role-based-dashboards)
 
 ---
 
@@ -36,15 +37,13 @@ POST /register
 Content-Type: application/json
 
 {
-    "name": "Ahmed Khaled ",
     "email": "ahmed@example.com",
     "password": "password123",
-     "first_name": "ahmed",
+    "first_name": "ahmed",
     "last_name": "khaled",
     "university_email": "ahmed@univ-constantine2.com"
 }
 ```
-
 
 ### Login
 ```http
@@ -63,11 +62,21 @@ POST /logout
 Authorization: Bearer {token}
 ```
 
+### Logout All Devices
+```http
+POST /logout-all
+Authorization: Bearer {token}
+```
+
 ### Get Current User
 ```http
 GET /me
 Authorization: Bearer {token}
 ```
+
+---
+
+## Password Reset
 
 ### Forgot Password
 Request a password reset link via email.
@@ -85,6 +94,11 @@ Content-Type: application/json
 {
     "message": "Password reset link has been sent to your email."
 }
+```
+
+**Note:** The email contains a reset URL with token. Extract the token from:
+```
+http://localhost/api/reset-password?token=TOKEN_HERE&email=ahmed@example.com
 ```
 
 ### Reset Password
@@ -281,6 +295,7 @@ GET /internship-offers/{id}
         "status": "open",
         "max_students": 3,
         "deadline": "2025-03-30",
+        "start_date": "2025-04-01",
         ...
     },
     "accepted_students": 2,
@@ -317,6 +332,11 @@ Content-Type: application/json
 }
 ```
 
+**Validation Rules:**
+- `start_date` - Must be after today
+- `deadline` - Must be after today AND before start_date
+- `duration` - Duration in weeks (min: 1)
+
 **New Fields:**
 - `max_students` - Maximum number of students to accept (default: 1)
 - `deadline` - Application deadline date (offer closes after this date)
@@ -333,9 +353,13 @@ Content-Type: application/json
 
 {
     "title": "Updated Title",
-    "description": "Updated description..."
+    "description": "Updated description...",
+    "start_date": "2025-05-01",
+    "deadline": "2025-04-15"
 }
 ```
+
+**Note:** Same validation rules apply - start_date must be after today, deadline must be before start_date.
 
 ### Delete Offer
 ```http
@@ -357,6 +381,19 @@ Authorization: Bearer {recruiter_token}
 ```http
 POST /internship-offers/{offerId}/apply
 Authorization: Bearer {student_token}
+```
+
+**Requirements:**
+- Student must have a CV
+- Offer must be open
+- Cannot apply if student has an active (non-completed) internship
+- Can apply again after internship is completed
+
+**Error - Has Active Internship:**
+```json
+{
+    "message": "You have an active internship. You can only apply after your current internship is completed."
+}
 ```
 
 **Error - Offer Closed:**
@@ -429,13 +466,6 @@ Authorization: Bearer {student_token}
 }
 ```
 
-**Error - Not Own Application:**
-```json
-{
-    "message": "Forbidden. You can only cancel your own applications."
-}
-```
-
 **Error - Internship Already Created:**
 ```json
 {
@@ -456,8 +486,11 @@ Authorization: Bearer {student_token}
     "applied_today": 5,
     "remaining_today": 5,
     "reset_at": "2025-03-18 00:00:00",
-    "has_confirmed_application": true,
-    "confirmed_application": { ... }
+    "can_apply": true,
+    "has_active_internship": false,
+    "active_internship": null,
+    "has_completed_internship": true,
+    "completed_internship": { ... }
 }
 ```
 
@@ -477,11 +510,15 @@ POST /applications/{id}/accept
 Authorization: Bearer {recruiter_token}
 ```
 
+**Note:** Sends email notification to student.
+
 ### Refuse Application
 ```http
 POST /applications/{id}/refuse
 Authorization: Bearer {recruiter_token}
 ```
+
+**Note:** Sends email notification to student.
 
 ---
 
@@ -499,11 +536,18 @@ POST /admin/applications/{applicationId}/validate
 Authorization: Bearer {admin_token}
 ```
 
+**Note:** Creates internship with:
+- `start_date` from offer
+- `end_date` = start_date + duration weeks
+- `status` = ongoing
+
 ### View All Internships (Same University Only)
 ```http
 GET /admin/internships
 Authorization: Bearer {admin_token}
 ```
+
+**Auto-Complete:** Internships automatically become `completed` when end_date passes.
 
 ### Complete Internship
 ```http
@@ -522,18 +566,6 @@ Authorization: Bearer {admin_token}
 - Admin can only reject applications from students of the same university
 - Application must be in `ACCEPTED` status
 - Cannot reject if internship has already been created
-
-**Success Response:**
-```json
-{
-    "message": "Application rejected successfully!",
-    "data": {
-        "id": 1,
-        "status": "refused",
-        ...
-    }
-}
-```
 
 ---
 
@@ -577,6 +609,7 @@ Authorization: Bearer {admin_token}
         "pending_cancelled": 3,
         "unconfirmed_cancelled": 2,
         "confirmed_validated": 1,
+        "internships_completed": 5,
         "timestamp": "2025-03-17 15:30:00"
     }
 }
@@ -730,6 +763,7 @@ Authorization: Bearer {token}
 | 403 | Forbidden |
 | 404 | Not Found |
 | 422 | Validation Error |
+| 429 | Too Many Requests (Rate Limit) |
 | 500 | Server Error |
 
 ---
@@ -743,14 +777,39 @@ Admins can only access data for students from the same university based on email
 - Can access: Students with `@univ-constantine2.com` emails
 - Cannot access: Students with `@univ-alger.dz`, `@univ-oran.dz` emails
 
-All admin endpoints return:
-```json
-{
-    "university_domain": "univ-constantine2.com",
-    "data": [...],
-    "meta": {...}
-}
-```
+---
+
+## Auto-Actions System
+
+The system automatically performs these actions:
+
+| Action | Trigger | Timeframe |
+|--------|---------|-----------|
+| Cancel pending applications | Recruiter no response | 14 days |
+| Cancel accepted applications | Student not confirmed | 14 days |
+| Validate confirmed applications | Admin not validated | 7 days |
+| Complete internships | End date passed | Immediate |
+
+**How it works:**
+- Runs on every API request via middleware
+- Also available via command: `php artisan app:auto-actions`
+- Can be scheduled in cron for background processing
+
+---
+
+## Test Credentials
+
+### Student
+- Email: `student@example.com`
+- Password: `password123`
+
+### Recruiter
+- Email: `recruiter@stageio.com`
+- Password: `recruiter123`
+
+### Admin (Super Admin)
+- Email: `admin@stageio.com`
+- Password: `admin123`
 
 ---
 
@@ -761,3 +820,5 @@ All admin endpoints return:
 3. **Generate Agreement**: One button creates agreement, marks signed, and generates PDF
 4. **File Storage**: PDFs stored in `storage/app/public/agreements/`
 5. **Access Public Files**: Via `http://127.0.0.1:8000/storage/{path}`
+6. **Internship Auto-Complete**: Internships automatically become `completed` when end_date passes
+7. **Apply After Completion**: Students can apply for new internships after their current one is completed
