@@ -77,6 +77,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is the super admin
+     */
+    public function isSuperAdmin(): bool
+    {
+        if (!$this->isAdmin()) {
+            return false;
+        }
+        return $this->adminProfile?->is_super_admin ?? false;
+    }
+
+    /**
      * Get the student profile associated with the user.
      */
     public function studentProfile()

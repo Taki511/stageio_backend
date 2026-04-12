@@ -28,7 +28,7 @@ class AdminSeeder extends Seeder
         );
 
         // Create or get Admin Profile
-        Administrator::firstOrCreate(
+        $admin = Administrator::firstOrCreate(
             ['user_id' => $adminUser->id],
             [
                 'first_name' => 'Admin',
@@ -37,8 +37,12 @@ class AdminSeeder extends Seeder
             ]
         );
 
+        // Ensure this first admin is always the super admin
+        $admin->update(['is_super_admin' => true]);
+
         $this->command->info('Admin user created/updated successfully!');
         $this->command->info('Email: admin@stageio.com');
         $this->command->info('Password: admin123');
+        $this->command->info('Role: SUPER ADMIN');
     }
 }

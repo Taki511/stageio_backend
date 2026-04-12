@@ -15,7 +15,29 @@ class Administrator extends Model
         'first_name',
         'last_name',
         'university_email',
+        'is_super_admin',
     ];
+
+    protected $casts = [
+        'is_super_admin' => 'boolean',
+    ];
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($admin) {
+            // If this admin is being set as super admin, remove super admin flag from all other admins
+            if ($admin->is_super_admin) {
+                static::where('id', '!=', $admin->id)
+                    ->where('is_super_admin', true)
+                    ->update(['is_super_admin' => false]);
+            }
+        });
+    }
 
     /**
      * Get the user that owns the admin profile.
@@ -31,5 +53,13 @@ class Administrator extends Model
     public function internshipAgreements()
     {
         return $this->hasMany(InternshipAgreement::class, 'admin_id');
+    }
+
+    /**
+     * Check if this admin is the super admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->is_super_admin;
     }
 }
