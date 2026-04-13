@@ -193,10 +193,11 @@ class ApplicationController extends Controller
             'confirmed_at' => now(),
         ]);
 
-        // Auto-cancel other accepted applications
+        // Auto-cancel other accepted applications that are not confirmed
         $cancelledCount = Application::where('student_id', $request->user()->id)
             ->where('id', '!=', $id)
             ->where('status', Application::STATUS_ACCEPTED)
+            ->where('is_confirmed', false)
             ->update(['status' => Application::STATUS_CANCELLED]);
 
         return response()->json([
