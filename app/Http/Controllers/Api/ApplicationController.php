@@ -387,7 +387,10 @@ class ApplicationController extends Controller
             ], 400);
         }
 
-        $application->update(['status' => Application::STATUS_ACCEPTED]);
+        $application->update([
+            'status' => Application::STATUS_ACCEPTED,
+            'accepted_at' => now(),
+        ]);
 
         // Send notification to student
         $this->notificationService->notifyStudentApplicationAccepted($application);

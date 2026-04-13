@@ -22,6 +22,7 @@ class Application extends Model
         'student_cv_id',
         'application_date',
         'status',
+        'accepted_at',
         'is_confirmed',
         'confirmed_at',
         'cover_letter',
@@ -29,6 +30,7 @@ class Application extends Model
 
     protected $casts = [
         'application_date' => 'date',
+        'accepted_at' => 'datetime',
         'is_confirmed' => 'boolean',
         'confirmed_at' => 'datetime',
     ];

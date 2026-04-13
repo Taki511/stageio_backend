@@ -74,6 +74,26 @@ GET /me
 Authorization: Bearer {token}
 ```
 
+**Response:**
+```json
+{
+    "user": {
+        "id": 1,
+        "name": "ahmed khaled",
+        "email": "ahmed@example.com",
+        "role": "student",
+        "student_profile": {
+            "id": 1,
+            "first_name": "ahmed",
+            "last_name": "khaled",
+            "university_email": "ahmed@univ-constantine2.com"
+        },
+        "recruiter_profile": null,
+        "admin_profile": null
+    }
+}
+```
+
 ---
 
 ## Password Reset
@@ -174,6 +194,40 @@ GET /my-cv
 Authorization: Bearer {student_token}
 ```
 
+**Response (Success):**
+```json
+{
+    "data": {
+        "id": 1,
+        "student_id": 1,
+        "first_name": "ahmed",
+        "last_name": "khaled",
+        "age": 22,
+        "full_address": "123 Main Street, Algiers, Algeria",
+        "phone_number": "+213 555 123 456",
+        "academic_level": "3rd Year Computer Science",
+        "email": "ahmed.khaled@example.com",
+        "university_email": "ahmed.khaled@univ-constantine2.com",
+        "github_link": "https://github.com/ahmedkhaled",
+        "linkedin_link": "https://linkedin.com/in/ahmedkhaled",
+        "portfolio_link": "https://ahmedkhaled.portfolio.com",
+        "motivation_letter": "I am passionate about software development...",
+        "personal_info": "Additional personal information...",
+        "personal_photo": "https://example.com/photos/ahmed.jpg",
+        "created_at": "2025-03-17T10:00:00.000000Z",
+        "updated_at": "2025-03-17T10:00:00.000000Z"
+    }
+}
+```
+
+**Response (Not Found):**
+```json
+{
+    "message": "CV not found. Please create one.",
+    "data": null
+}
+```
+
 ### Update CV
 ```http
 PUT /my-cv
@@ -229,6 +283,36 @@ GET /company-profile
 Authorization: Bearer {recruiter_token}
 ```
 
+**Response (Success):**
+```json
+{
+    "data": {
+        "id": 1,
+        "recruiter_id": 2,
+        "name": "Tech Solutions Algeria",
+        "description": "A leading tech company...",
+        "wilaya": "Algiers",
+        "address": "123 Tech Street, Hydra",
+        "logo": "https://example.com/logo.png",
+        "created_at": "2025-03-17T10:00:00.000000Z",
+        "updated_at": "2025-03-17T10:00:00.000000Z",
+        "recruiter": {
+            "id": 2,
+            "name": "recruiter name",
+            "email": "recruiter@stageio.com"
+        }
+    }
+}
+```
+
+**Response (Not Found):**
+```json
+{
+    "message": "Company profile not found. Please create one.",
+    "data": null
+}
+```
+
 ### Update Company Profile
 ```http
 PUT /company-profile
@@ -256,6 +340,44 @@ Authorization: Bearer {recruiter_token}
 GET /internship-offers
 ```
 
+**Response:**
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "company_profile_id": 1,
+            "title": "Full Stack Developer Intern",
+            "description": "We are looking for a talented intern...",
+            "wilaya": "Algiers",
+            "start_date": "2025-04-01",
+            "internship_type": "full_time",
+            "duration": 12,
+            "status": "open",
+            "max_students": 3,
+            "deadline": "2025-03-30",
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T10:00:00.000000Z",
+            "company_profile": {
+                "id": 1,
+                "name": "Tech Solutions Algeria",
+                "wilaya": "Algiers"
+            },
+            "skills": [
+                { "id": 1, "name": "React" },
+                { "id": 2, "name": "Laravel" }
+            ]
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
 **Query Parameters:**
 - `status=open` - Show only open offers (default)
 - `status=closed` - Show only closed offers
@@ -271,9 +393,88 @@ GET /internship-offers
 GET /internship-offers-search?q=react developer
 ```
 
+**Response:**
+```json
+{
+    "search_term": "react developer",
+    "results_count": 5,
+    "data": [
+        {
+            "id": 1,
+            "company_profile_id": 1,
+            "title": "React Developer Intern",
+            "description": "Looking for a React developer intern...",
+            "wilaya": "Algiers",
+            "start_date": "2025-04-01",
+            "internship_type": "full_time",
+            "duration": 12,
+            "status": "open",
+            "max_students": 3,
+            "deadline": "2025-03-30",
+            "company_profile": {
+                "id": 1,
+                "name": "Tech Solutions Algeria"
+            },
+            "skills": [
+                { "id": 1, "name": "React" }
+            ]
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 5
+    }
+}
+```
+
 ### Filter Offers (Dropdown)
 ```http
 GET /internship-offers-filter?wilaya=Algiers&type=full_time&skill_id=1
+```
+
+**Response:**
+```json
+{
+    "filters_applied": {
+        "wilaya": "Algiers",
+        "type": "full_time",
+        "skill_id": 1,
+        "company_id": null,
+        "min_duration": null,
+        "max_duration": null
+    },
+    "results_count": 3,
+    "data": [
+        {
+            "id": 1,
+            "company_profile_id": 1,
+            "title": "Full Stack Developer Intern",
+            "description": "We are looking for a talented intern...",
+            "wilaya": "Algiers",
+            "start_date": "2025-04-01",
+            "internship_type": "full_time",
+            "duration": 12,
+            "status": "open",
+            "max_students": 3,
+            "deadline": "2025-03-30",
+            "company_profile": {
+                "id": 1,
+                "name": "Tech Solutions Algeria"
+            },
+            "skills": [
+                { "id": 1, "name": "React" }
+            ]
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 3
+    }
+}
 ```
 
 ### Get Filter Options (for Dropdowns)
@@ -281,22 +482,62 @@ GET /internship-offers-filter?wilaya=Algiers&type=full_time&skill_id=1
 GET /internship-offers-filter-options
 ```
 
+**Response:**
+```json
+{
+    "wilayas": ["Algiers", "Oran", "Constantine"],
+    "types": [
+        { "value": "full_time", "label": "Full Time" },
+        { "value": "part_time", "label": "Part Time" },
+        { "value": "remote", "label": "Remote" }
+    ],
+    "skills": [
+        { "id": 1, "name": "React" },
+        { "id": 2, "name": "Laravel" },
+        { "id": 3, "name": "MySQL" }
+    ],
+    "companies": [
+        { "id": 1, "name": "Tech Solutions Algeria" },
+        { "id": 2, "name": "Digital Agency Oran" }
+    ]
+}
+```
+
 ### View Single Offer
 ```http
 GET /internship-offers/{id}
 ```
 
-**Response includes:**
+**Response:**
 ```json
 {
     "data": {
         "id": 1,
-        "title": "...",
+        "company_profile_id": 1,
+        "title": "Full Stack Developer Intern",
+        "description": "We are looking for a talented intern...",
+        "wilaya": "Algiers",
+        "start_date": "2025-04-01",
+        "internship_type": "full_time",
+        "duration": 12,
         "status": "open",
         "max_students": 3,
         "deadline": "2025-03-30",
-        "start_date": "2025-04-01",
-        ...
+        "created_at": "2025-03-17T10:00:00.000000Z",
+        "updated_at": "2025-03-17T10:00:00.000000Z",
+        "company_profile": {
+            "id": 1,
+            "name": "Tech Solutions Algeria",
+            "description": "A leading tech company...",
+            "wilaya": "Algiers",
+            "address": "123 Tech Street, Hydra",
+            "logo": "https://example.com/logo.png"
+        },
+        "skills": [
+            { "id": 1, "name": "React" },
+            { "id": 2, "name": "Laravel" },
+            { "id": 3, "name": "MySQL" }
+        ]
     },
     "accepted_students": 2,
     "available_spots": 1,
@@ -307,6 +548,13 @@ GET /internship-offers/{id}
 ### List All Skills
 ```http
 GET /internship-offers/skills/list
+```
+
+**Response:**
+```json
+{
+    "data": ["React", "Laravel", "MySQL", "Vue.js", "Node.js"]
+}
 ```
 
 ---
@@ -373,6 +621,45 @@ GET /my-internship-offers
 Authorization: Bearer {recruiter_token}
 ```
 
+**Response:**
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "company_profile_id": 1,
+            "title": "Full Stack Developer Intern",
+            "description": "We are looking for a talented intern...",
+            "wilaya": "Algiers",
+            "start_date": "2025-04-01",
+            "internship_type": "full_time",
+            "duration": 12,
+            "status": "open",
+            "max_students": 3,
+            "deadline": "2025-03-30",
+            "skills": [
+                { "id": 1, "name": "React" },
+                { "id": 2, "name": "Laravel" }
+            ],
+            "applications": [
+                {
+                    "id": 1,
+                    "student_id": 1,
+                    "status": "pending",
+                    "application_date": "2025-03-17"
+                }
+            ]
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
 ---
 
 ## Applications (Student)
@@ -411,10 +698,92 @@ GET /my-applications
 Authorization: Bearer {student_token}
 ```
 
+**Response:**
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "student_id": 1,
+            "internship_offer_id": 1,
+            "student_cv_id": 1,
+            "application_date": "2025-03-17",
+            "status": "pending",
+            "accepted_at": null,
+            "is_confirmed": false,
+            "confirmed_at": null,
+            "cover_letter": null,
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T10:00:00.000000Z",
+            "internship_offer": {
+                "id": 1,
+                "title": "Full Stack Developer Intern",
+                "company_profile": {
+                    "id": 1,
+                    "name": "Tech Solutions Algeria"
+                }
+            },
+            "student_cv": {
+                "id": 1,
+                "first_name": "ahmed",
+                "last_name": "khaled",
+                "email": "ahmed.khaled@example.com"
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
 ### View Single Application
 ```http
 GET /applications/{id}
 Authorization: Bearer {student_token}
+```
+
+**Response:**
+```json
+{
+    "data": {
+        "id": 1,
+        "student_id": 1,
+        "internship_offer_id": 1,
+        "student_cv_id": 1,
+        "application_date": "2025-03-17",
+        "status": "pending",
+        "accepted_at": null,
+        "is_confirmed": false,
+        "confirmed_at": null,
+        "cover_letter": null,
+        "created_at": "2025-03-17T10:00:00.000000Z",
+        "updated_at": "2025-03-17T10:00:00.000000Z",
+        "internship_offer": {
+            "id": 1,
+            "title": "Full Stack Developer Intern",
+            "description": "We are looking for a talented intern...",
+            "wilaya": "Algiers",
+            "company_profile": {
+                "id": 1,
+                "name": "Tech Solutions Algeria",
+                "wilaya": "Algiers",
+                "address": "123 Tech Street, Hydra"
+            }
+        },
+        "student_cv": {
+            "id": 1,
+            "first_name": "ahmed",
+            "last_name": "khaled",
+            "email": "ahmed.khaled@example.com",
+            "phone_number": "+213 555 123 456",
+            "academic_level": "3rd Year Computer Science"
+        }
+    }
+}
 ```
 
 ### Confirm Accepted Application
@@ -504,6 +873,53 @@ GET /internship-offers/{offerId}/applications
 Authorization: Bearer {recruiter_token}
 ```
 
+**Response:**
+```json
+{
+    "data": [
+        {
+            "id": 1,
+            "student_id": 1,
+            "internship_offer_id": 1,
+            "student_cv_id": 1,
+            "application_date": "2025-03-17",
+            "status": "pending",
+            "accepted_at": null,
+            "is_confirmed": false,
+            "confirmed_at": null,
+            "cover_letter": null,
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T10:00:00.000000Z",
+            "student": {
+                "id": 1,
+                "name": "ahmed khaled",
+                "email": "ahmed@example.com",
+                "student_profile": {
+                    "id": 1,
+                    "first_name": "ahmed",
+                    "last_name": "khaled",
+                    "university_email": "ahmed@univ-constantine2.com"
+                }
+            },
+            "student_cv": {
+                "id": 1,
+                "first_name": "ahmed",
+                "last_name": "khaled",
+                "email": "ahmed.khaled@example.com",
+                "phone_number": "+213 555 123 456",
+                "academic_level": "3rd Year Computer Science"
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
 ### Accept Application
 ```http
 POST /applications/{id}/accept
@@ -530,6 +946,54 @@ GET /admin/pending-validations
 Authorization: Bearer {admin_token}
 ```
 
+**Response:**
+```json
+{
+    "university_domain": "univ-constantine2.com",
+    "data": [
+        {
+            "id": 1,
+            "student_id": 1,
+            "internship_offer_id": 1,
+            "student_cv_id": 1,
+            "application_date": "2025-03-17",
+            "status": "accepted",
+            "accepted_at": "2025-03-17T11:00:00.000000Z",
+            "is_confirmed": true,
+            "confirmed_at": "2025-03-17T12:00:00.000000Z",
+            "cover_letter": null,
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T12:00:00.000000Z",
+            "student": {
+                "id": 1,
+                "name": "ahmed khaled",
+                "email": "ahmed@example.com",
+                "student_profile": {
+                    "id": 1,
+                    "first_name": "ahmed",
+                    "last_name": "khaled",
+                    "university_email": "ahmed@univ-constantine2.com"
+                }
+            },
+            "internship_offer": {
+                "id": 1,
+                "title": "Full Stack Developer Intern",
+                "company_profile": {
+                    "id": 1,
+                    "name": "Tech Solutions Algeria"
+                }
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
 ### Validate Application (One Click)
 ```http
 POST /admin/applications/{applicationId}/validate
@@ -545,6 +1009,62 @@ Authorization: Bearer {admin_token}
 ```http
 GET /admin/internships
 Authorization: Bearer {admin_token}
+```
+
+**Response:**
+```json
+{
+    "university_domain": "univ-constantine2.com",
+    "data": [
+        {
+            "id": 1,
+            "application_id": 1,
+            "start_date": "2025-04-01",
+            "end_date": "2025-06-24",
+            "status": "ongoing",
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T10:00:00.000000Z",
+            "application": {
+                "id": 1,
+                "student_id": 1,
+                "internship_offer_id": 1,
+                "student": {
+                    "id": 1,
+                    "name": "ahmed khaled",
+                    "email": "ahmed@example.com",
+                    "student_profile": {
+                        "id": 1,
+                        "first_name": "ahmed",
+                        "last_name": "khaled",
+                        "university_email": "ahmed@univ-constantine2.com"
+                    }
+                },
+                "internship_offer": {
+                    "id": 1,
+                    "title": "Full Stack Developer Intern",
+                    "company_profile": {
+                        "id": 1,
+                        "name": "Tech Solutions Algeria"
+                    }
+                }
+            },
+            "agreement": {
+                "id": 1,
+                "internship_id": 1,
+                "admin_id": 3,
+                "generated_date": "2025-03-17",
+                "signature_status": true,
+                "pdf_file": "agreements/agreement_1.pdf"
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
 ```
 
 **Auto-Complete:** Internships automatically become `completed` when end_date passes.
@@ -577,6 +1097,68 @@ GET /admin/agreements
 Authorization: Bearer {admin_token}
 ```
 
+**Response:**
+```json
+{
+    "university_domain": "univ-constantine2.com",
+    "data": [
+        {
+            "id": 1,
+            "internship_id": 1,
+            "admin_id": 3,
+            "generated_date": "2025-03-17",
+            "signature_status": true,
+            "pdf_file": "agreements/agreement_1.pdf",
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T10:00:00.000000Z",
+            "pdf_url": "http://127.0.0.1:8000/storage/agreements/agreement_1.pdf",
+            "internship": {
+                "id": 1,
+                "application_id": 1,
+                "start_date": "2025-04-01",
+                "end_date": "2025-06-24",
+                "status": "ongoing",
+                "application": {
+                    "id": 1,
+                    "student_id": 1,
+                    "internship_offer_id": 1,
+                    "student": {
+                        "id": 1,
+                        "name": "ahmed khaled",
+                        "email": "ahmed@example.com",
+                        "student_profile": {
+                            "id": 1,
+                            "first_name": "ahmed",
+                            "last_name": "khaled",
+                            "university_email": "ahmed@univ-constantine2.com"
+                        }
+                    },
+                    "internship_offer": {
+                        "id": 1,
+                        "title": "Full Stack Developer Intern",
+                        "company_profile": {
+                            "id": 1,
+                            "name": "Tech Solutions Algeria"
+                        }
+                    }
+                }
+            },
+            "admin": {
+                "id": 3,
+                "name": "admin name",
+                "email": "admin@stageio.com"
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
 ### Generate Agreement (One Click - Creates + Signs + PDF)
 ```http
 POST /admin/internships/{internshipId}/generate-agreement
@@ -588,6 +1170,8 @@ Authorization: Bearer {admin_token}
 GET /admin/agreements/{agreementId}/download
 Authorization: Bearer {admin_token}
 ```
+
+**Response:** Returns the PDF file as a download (`application/pdf` content type).
 
 ### Regenerate PDF
 ```http
@@ -625,16 +1209,37 @@ GET /student/dashboard
 Authorization: Bearer {student_token}
 ```
 
+**Response:**
+```json
+{
+    "message": "Welcome to Student Dashboard"
+}
+```
+
 ### Recruiter Dashboard
 ```http
 GET /recruiter/dashboard
 Authorization: Bearer {recruiter_token}
 ```
 
+**Response:**
+```json
+{
+    "message": "Welcome to Recruiter Dashboard"
+}
+```
+
 ### Admin Dashboard
 ```http
 GET /admin/dashboard
 Authorization: Bearer {admin_token}
+```
+
+**Response:**
+```json
+{
+    "message": "Welcome to Admin Dashboard"
+}
 ```
 
 ---

@@ -71,14 +71,14 @@ class AutoActionController extends Controller
             ->with('internshipOffer')
             ->get()
             ->map(function ($app) use ($now) {
-                $daysLeft = self::STUDENT_CONFIRM_DAYS - $app->updated_at->diffInDays($now);
+                $daysLeft = self::STUDENT_CONFIRM_DAYS - $app->accepted_at->diffInDays($now);
                 return [
                     'application_id' => $app->id,
                     'offer_title' => $app->internshipOffer?->title ?? 'N/A',
                     'status' => $app->status,
-                    'days_waiting' => $app->updated_at->diffInDays($now),
+                    'days_waiting' => $app->accepted_at->diffInDays($now),
                     'days_until_auto_cancel' => max(0, round($daysLeft)),
-                    'accepted_at' => $app->updated_at->toDateTimeString(),
+                    'accepted_at' => $app->accepted_at?->toDateTimeString(),
                 ];
             });
 

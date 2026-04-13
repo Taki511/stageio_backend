@@ -102,7 +102,7 @@ class AutoActionService
         
         $applications = Application::where('status', Application::STATUS_ACCEPTED)
             ->where('is_confirmed', false)
-            ->where('updated_at', '<', $cutoffDate)
+            ->where('accepted_at', '<', $cutoffDate)
             ->get();
 
         $count = 0;
@@ -131,7 +131,7 @@ class AutoActionService
         $applications = Application::where('student_id', $studentId)
             ->where('status', Application::STATUS_ACCEPTED)
             ->where('is_confirmed', false)
-            ->where('updated_at', '<', $cutoffDate)
+            ->where('accepted_at', '<', $cutoffDate)
             ->get();
 
         $count = 0;
