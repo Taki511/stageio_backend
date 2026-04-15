@@ -51,14 +51,21 @@ class Application extends Model
     }
 
     /**
-     * Auto-cancel other accepted applications when one is confirmed.
+     * Auto-cancel other accepted and pending applications when one is confirmed.
      */
     public function autoCancelOtherApplications(): void
     {
+        // Cancel other accepted (but not confirmed) applications
         self::where('student_id', $this->student_id)
             ->where('id', '!=', $this->id)
             ->where('status', self::STATUS_ACCEPTED)
             ->where('is_confirmed', false)
+            ->update(['status' => self::STATUS_CANCELLED]);
+
+        // Cancel all pending applications
+        self::where('student_id', $this->student_id)
+            ->where('id', '!=', $this->id)
+            ->where('status', self::STATUS_PENDING)
             ->update(['status' => self::STATUS_CANCELLED]);
     }
 

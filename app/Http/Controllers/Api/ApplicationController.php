@@ -188,17 +188,18 @@ class ApplicationController extends Controller
         }
 
         // Confirm the application
+        // The model's boot method will auto-cancel other accepted and pending applications
         $application->update([
             'is_confirmed' => true,
             'confirmed_at' => now(),
         ]);
 
-        // Auto-cancel other accepted applications that are not confirmed
+        // Count how many other applications were just cancelled
         $cancelledCount = Application::where('student_id', $request->user()->id)
             ->where('id', '!=', $id)
-            ->where('status', Application::STATUS_ACCEPTED)
-            ->where('is_confirmed', false)
-            ->update(['status' => Application::STATUS_CANCELLED]);
+            ->where('status', Application::STATUS_CANCELLED)
+            ->where('updated_at', '>=', now()->subSeconds(5))
+            ->count();
 
         return response()->json([
             'message' => 'Application confirmed successfully!',
