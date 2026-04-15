@@ -102,9 +102,10 @@ class ApplicationController extends Controller
             ], 400);
         }
 
-        // Check if student has an active (non-completed) confirmed application
+        // Check if student has an active confirmed application that is not refused by admin
         $activeConfirmedApplication = Application::where('student_id', $student->id)
             ->where('is_confirmed', true)
+            ->where('status', '!=', Application::STATUS_REFUSED)
             ->whereDoesntHave('internship', function ($query) {
                 $query->where('status', Internship::STATUS_COMPLETED);
             })
@@ -229,9 +230,10 @@ class ApplicationController extends Controller
         
         $remaining = max(0, self::DAILY_APPLICATION_LIMIT - $count);
 
-        // Check if student has an active confirmed application (not completed)
+        // Check if student has an active confirmed application (not completed, not refused)
         $activeConfirmedApplication = Application::where('student_id', $studentId)
             ->where('is_confirmed', true)
+            ->where('status', '!=', Application::STATUS_REFUSED)
             ->whereDoesntHave('internship', function ($query) {
                 $query->where('status', Internship::STATUS_COMPLETED);
             })

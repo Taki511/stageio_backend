@@ -590,6 +590,12 @@ class AdminValidationController extends Controller
         // Reject the application (set back to refused status)
         $application->update(['status' => Application::STATUS_REFUSED]);
 
+        // Update offer status if it was closed (reopening the spot)
+        $offer = $application->internshipOffer;
+        if ($offer && $offer->status === InternshipOffer::STATUS_CLOSED) {
+            $offer->autoUpdateStatus();
+        }
+
         // Send notification to student
         $this->notificationService->notifyStudentApplicationRejected($application);
 
