@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('first_name');
             $table->string('last_name');
             $table->string('university_email');
+            $table->boolean('is_super_admin')->default(false);
             $table->timestamps();
         });
     }
