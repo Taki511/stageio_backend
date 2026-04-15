@@ -436,8 +436,14 @@ class ApplicationController extends Controller
             ], 400);
         }
 
-        // Cancel the application
-        $application->cancel();
+        // Refuse the application
+        $application->update(['status' => Application::STATUS_REFUSED]);
+
+        // Update offer status if it was closed
+        $offer = $application->internshipOffer;
+        if ($offer && $offer->status === InternshipOffer::STATUS_CLOSED) {
+            $offer->autoUpdateStatus();
+        }
 
         // Send notification to student
         $this->notificationService->notifyStudentApplicationRefused($application);
