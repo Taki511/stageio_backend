@@ -128,8 +128,11 @@ class AdminValidationController extends Controller
             'status' => Internship::STATUS_ONGOING,
         ]);
 
-        // Update application status to validated
-        $application->update(['status' => Application::STATUS_VALIDATED]);
+        // Update application status to validated and record admin
+        $application->update([
+            'status' => Application::STATUS_VALIDATED,
+            'admin_id' => $request->user()->id,
+        ]);
 
         // Send notification to student
         $this->notificationService->notifyStudentInternshipValidated($application);
@@ -374,6 +377,94 @@ class AdminValidationController extends Controller
     }
 
     /**
+     * Admin views validated applications by him for students from the same university.
+     */
+    public function validatedApplications(Request $request)
+    {
+        if (!$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Forbidden. Only administrators can view validated applications.',
+            ], 403);
+        }
+
+        $adminDomain = $this->getAdminUniversityDomain($request);
+
+        if (empty($adminDomain)) {
+            return response()->json([
+                'message' => 'Your university email is not configured properly.',
+            ], 400);
+        }
+
+        $query = Application::where('status', Application::STATUS_VALIDATED)
+            ->whereHas('student.studentProfile', function ($query) use ($adminDomain) {
+                $query->where('university_email', 'like', '%@' . $adminDomain);
+            })
+            ->with(['student.studentProfile', 'internshipOffer.companyProfile', 'internship'])
+            ->orderBy('updated_at', 'desc');
+
+        if (!$request->user()->isSuperAdmin()) {
+            $query->where('admin_id', $request->user()->id);
+        }
+
+        $applications = $query->paginate($request->get('per_page', 10));
+
+        return response()->json([
+            'university_domain' => $adminDomain,
+            'data' => $applications->items(),
+            'meta' => [
+                'current_page' => $applications->currentPage(),
+                'last_page' => $applications->lastPage(),
+                'per_page' => $applications->perPage(),
+                'total' => $applications->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin views rejected applications by him for students from the same university.
+     */
+    public function rejectedApplications(Request $request)
+    {
+        if (!$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Forbidden. Only administrators can view rejected applications.',
+            ], 403);
+        }
+
+        $adminDomain = $this->getAdminUniversityDomain($request);
+
+        if (empty($adminDomain)) {
+            return response()->json([
+                'message' => 'Your university email is not configured properly.',
+            ], 400);
+        }
+
+        $query = Application::where('status', Application::STATUS_REFUSED)
+            ->whereHas('student.studentProfile', function ($query) use ($adminDomain) {
+                $query->where('university_email', 'like', '%@' . $adminDomain);
+            })
+            ->with(['student.studentProfile', 'internshipOffer.companyProfile'])
+            ->orderBy('updated_at', 'desc');
+
+        if (!$request->user()->isSuperAdmin()) {
+            $query->where('admin_id', $request->user()->id);
+        }
+
+        $applications = $query->paginate($request->get('per_page', 10));
+
+        return response()->json([
+            'university_domain' => $adminDomain,
+            'data' => $applications->items(),
+            'meta' => [
+                'current_page' => $applications->currentPage(),
+                'last_page' => $applications->lastPage(),
+                'per_page' => $applications->perPage(),
+                'total' => $applications->total(),
+            ],
+        ]);
+    }
+
+    /**
      * Admin views pending validations (confirmed applications) for students from the same university.
      */
     public function pendingValidations(Request $request)
@@ -587,8 +678,11 @@ class AdminValidationController extends Controller
             ], 400);
         }
 
-        // Reject the application (set back to refused status)
-        $application->update(['status' => Application::STATUS_REFUSED]);
+        // Reject the application (set back to refused status) and record admin
+        $application->update([
+            'status' => Application::STATUS_REFUSED,
+            'admin_id' => $request->user()->id,
+        ]);
 
         // Update offer status if it was closed (reopening the spot)
         $offer = $application->internshipOffer;

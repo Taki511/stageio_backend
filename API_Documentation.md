@@ -787,7 +787,7 @@ Authorization: Bearer {student_token}
 ```
 
 ### Confirm Accepted Application
-Student confirms one accepted application. All other accepted applications will be auto-cancelled.
+Student confirms one accepted application. All other accepted and pending applications will be auto-cancelled.
 ```http
 POST /applications/{id}/confirm
 Authorization: Bearer {student_token}
@@ -934,7 +934,7 @@ POST /applications/{id}/refuse
 Authorization: Bearer {recruiter_token}
 ```
 
-**Note:** Sends email notification to student.
+**Note:** Sets application status to `refused`. Sends email notification to student.
 
 ---
 
@@ -973,6 +973,122 @@ Authorization: Bearer {admin_token}
                     "first_name": "ahmed",
                     "last_name": "khaled",
                     "university_email": "ahmed@univ-constantine2.com"
+                }
+            },
+            "internship_offer": {
+                "id": 1,
+                "title": "Full Stack Developer Intern",
+                "company_profile": {
+                    "id": 1,
+                    "name": "Tech Solutions Algeria"
+                }
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
+### View Validated Applications by Me (Same University Only)
+```http
+GET /admin/validated-applications
+Authorization: Bearer {admin_token}
+```
+
+**Response:**
+```json
+{
+    "university_domain": "univ-constantine2.com",
+    "data": [
+        {
+            "id": 1,
+            "student_id": 1,
+            "internship_offer_id": 1,
+            "student_cv_id": 1,
+            "application_date": "2025-03-17",
+            "status": "validated",
+            "accepted_at": "2025-03-17T11:00:00.000000Z",
+            "is_confirmed": true,
+            "confirmed_at": "2025-03-17T12:00:00.000000Z",
+            "admin_id": 3,
+            "cover_letter": null,
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T12:00:00.000000Z",
+            "student": {
+                "id": 1,
+                "name": "ahmed khaled",
+                "email": "ahmed@example.com",
+                "student_profile": {
+                    "id": 1,
+                    "first_name": "ahmed",
+                    "last_name": "khaled",
+                    "university_email": "ahmed@univ-constantine2.com"
+                }
+            },
+            "internship_offer": {
+                "id": 1,
+                "title": "Full Stack Developer Intern",
+                "company_profile": {
+                    "id": 1,
+                    "name": "Tech Solutions Algeria"
+                }
+            },
+            "internship": {
+                "id": 1,
+                "start_date": "2025-04-01",
+                "end_date": "2025-06-24",
+                "status": "ongoing"
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 10,
+        "total": 1
+    }
+}
+```
+
+### View Rejected Applications by Me (Same University Only)
+```http
+GET /admin/rejected-applications
+Authorization: Bearer {admin_token}
+```
+
+**Response:**
+```json
+{
+    "university_domain": "univ-constantine2.com",
+    "data": [
+        {
+            "id": 2,
+            "student_id": 2,
+            "internship_offer_id": 1,
+            "student_cv_id": 2,
+            "application_date": "2025-03-17",
+            "status": "refused",
+            "accepted_at": "2025-03-17T11:00:00.000000Z",
+            "is_confirmed": true,
+            "confirmed_at": "2025-03-17T12:00:00.000000Z",
+            "admin_id": 3,
+            "cover_letter": null,
+            "created_at": "2025-03-17T10:00:00.000000Z",
+            "updated_at": "2025-03-17T14:00:00.000000Z",
+            "student": {
+                "id": 2,
+                "name": "khaled ahmed",
+                "email": "khaled@example.com",
+                "student_profile": {
+                    "id": 2,
+                    "first_name": "khaled",
+                    "last_name": "ahmed",
+                    "university_email": "khaled@univ-constantine2.com"
                 }
             },
             "internship_offer": {

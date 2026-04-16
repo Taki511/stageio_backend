@@ -169,6 +169,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         // Validation Routes
         Route::get('/admin/pending-validations', [AdminValidationController::class, 'pendingValidations']);
+        Route::get('/admin/validated-applications', [AdminValidationController::class, 'validatedApplications']);
+        Route::get('/admin/rejected-applications', [AdminValidationController::class, 'rejectedApplications']);
         Route::post('/admin/applications/{applicationId}/validate', [AdminValidationController::class, 'validateInternship']);
         Route::post('/admin/applications/{applicationId}/reject', [AdminValidationController::class, 'rejectApplication']);
         

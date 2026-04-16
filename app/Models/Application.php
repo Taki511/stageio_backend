@@ -25,6 +25,7 @@ class Application extends Model
         'accepted_at',
         'is_confirmed',
         'confirmed_at',
+        'admin_id',
         'cover_letter',
     ];
 
@@ -105,6 +106,14 @@ class Application extends Model
     public function studentCv()
     {
         return $this->belongsTo(StudentCV::class, 'student_cv_id');
+    }
+
+    /**
+     * Get the admin who validated or rejected this application.
+     */
+    public function admin()
+    {
+        return $this->belongsTo(User::class, 'admin_id');
     }
 
     /**

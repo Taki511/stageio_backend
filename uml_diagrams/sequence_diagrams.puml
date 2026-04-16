@@ -1,0 +1,252 @@
+@startuml
+
+title Student Applies to Internship Offer
+
+actor Student
+participant "Client" as Client
+participant "Auth\nMiddleware" as Auth
+participant "Application\nController" as AppCtrl
+participant "Application\nModel" as AppModel
+participant "InternshipOffer\nModel" as Offer
+
+database "Database" as DB
+
+Student -> Client : POST /internship-offers/{id}/apply
+Client -> Auth : Bearer Token
+Auth --> Client : Authenticated (student)
+
+Client -> AppCtrl : apply(offerId)
+AppCtrl -> DB : Check daily limit
+DB --> AppCtrl : count < 10
+
+AppCtrl -> Offer : find(offerId)
+Offer -> DB : SELECT offer
+DB --> Offer : offer data
+Offer --> AppCtrl : offer
+
+AppCtrl -> AppCtrl : Check offer is open
+AppCtrl -> DB : Check existing application
+DB --> AppCtrl : none
+
+AppCtrl -> DB : Check active confirmed app
+DB --> AppCtrl : none
+
+AppCtrl -> DB : Get student CV
+DB --> AppCtrl : cv
+
+AppCtrl -> AppModel : create(application)
+AppModel -> DB : INSERT application
+DB --> AppModel : created
+AppModel --> AppCtrl : application
+
+AppCtrl --> Client : 201 Created
+Client --> Student : Success + remaining apps
+
+@enduml
+
+@startuml
+
+title Recruiter Accepts Application
+
+actor Recruiter
+participant "Client" as Client
+participant "Auth\nMiddleware" as Auth
+participant "Application\nController" as AppCtrl
+participant "Notification\nService" as Notif
+participant "Application\nModel" as AppModel
+
+database "Database" as DB
+
+Recruiter -> Client : POST /applications/{id}/accept
+Client -> Auth : Bearer Token
+Auth --> Client : Authenticated (recruiter)
+
+Client -> AppCtrl : accept(id)
+AppCtrl -> AppModel : find(id)
+AppModel -> DB : SELECT application
+DB --> AppModel : application
+AppModel --> AppCtrl : application
+
+AppCtrl -> AppCtrl : Verify ownership & status=pending
+AppCtrl -> AppModel : update(status=accepted, accepted_at=now)
+AppModel -> DB : UPDATE application
+DB --> AppModel : updated
+AppModel --> AppCtrl : application
+
+AppCtrl -> Notif : notifyStudentApplicationAccepted(app)
+Notif --> AppCtrl : sent
+
+AppCtrl --> Client : 200 OK
+Client --> Recruiter : Application accepted
+
+@enduml
+
+@startuml
+
+title Student Confirms Accepted Application
+
+actor Student
+participant "Client" as Client
+participant "Auth\nMiddleware" as Auth
+participant "Application\nController" as AppCtrl
+participant "Application\nModel" as AppModel
+
+database "Database" as DB
+
+Student -> Client : POST /applications/{id}/confirm
+Client -> Auth : Bearer Token
+Auth --> Client : Authenticated (student)
+
+Client -> AppCtrl : confirm(id)
+AppCtrl -> AppModel : find(id)
+AppModel -> DB : SELECT application
+DB --> AppModel : application
+AppModel --> AppCtrl : application
+
+AppCtrl -> AppCtrl : Verify ownership & status=accepted
+AppCtrl -> AppModel : update(is_confirmed=true, confirmed_at=now)
+AppModel -> AppModel : boot() -> autoCancelOtherApplications()
+AppModel -> DB : UPDATE other accepted -> cancelled
+AppModel -> DB : UPDATE pending -> cancelled
+DB --> AppModel : updated
+AppModel --> AppCtrl : application
+
+AppCtrl -> DB : Count recently cancelled
+DB --> AppCtrl : cancelledCount
+
+AppCtrl --> Client : 200 OK + cancelledCount
+Client --> Student : Confirmed successfully
+
+@enduml
+
+@startuml
+
+title Admin Validates Confirmed Application
+
+actor Admin
+participant "Client" as Client
+participant "Auth\nMiddleware" as Auth
+participant "AdminValidation\nController" as AdminCtrl
+participant "Application\nModel" as AppModel
+participant "Internship\nModel" as Internship
+participant "Notification\nService" as Notif
+
+database "Database" as DB
+
+Admin -> Client : POST /admin/applications/{id}/validate
+Client -> Auth : Bearer Token
+Auth --> Client : Authenticated (admin)
+
+Client -> AdminCtrl : validateInternship(id)
+AdminCtrl -> AppModel : find(id)
+AppModel -> DB : SELECT application
+DB --> AppModel : application
+AppModel --> AdminCtrl : application
+
+AdminCtrl -> AdminCtrl : Check same university
+AdminCtrl -> AdminCtrl : Check status=accepted & confirmed
+AdminCtrl -> AdminCtrl : Check no internship exists
+
+AdminCtrl -> Internship : create(start_date, end_date, status=ongoing)
+Internship -> DB : INSERT internship
+DB --> Internship : created
+Internship --> AdminCtrl : internship
+
+AdminCtrl -> AppModel : update(status=validated, admin_id=currentAdmin)
+AppModel -> DB : UPDATE application
+DB --> AppModel : updated
+
+AdminCtrl -> Notif : notifyStudentInternshipValidated(app)
+Notif --> AdminCtrl : sent
+
+AdminCtrl --> Client : 201 Created
+Client --> Admin : Validation success
+
+@enduml
+
+@startuml
+
+title Admin Rejects Confirmed Application
+
+actor Admin
+participant "Client" as Client
+participant "Auth\nMiddleware" as Auth
+participant "AdminValidation\nController" as AdminCtrl
+participant "Application\nModel" as AppModel
+participant "InternshipOffer\nModel" as Offer
+participant "Notification\nService" as Notif
+
+database "Database" as DB
+
+Admin -> Client : POST /admin/applications/{id}/reject
+Client -> Auth : Bearer Token
+Auth --> Client : Authenticated (admin)
+
+Client -> AdminCtrl : rejectApplication(id)
+AdminCtrl -> AppModel : find(id)
+AppModel -> DB : SELECT application
+DB --> AppModel : application
+AppModel --> AdminCtrl : application
+
+AdminCtrl -> AdminCtrl : Check same university
+AdminCtrl -> AdminCtrl : Check status=accepted
+AdminCtrl -> AdminCtrl : Check no internship exists
+
+AdminCtrl -> AppModel : update(status=refused, admin_id=currentAdmin)
+AppModel -> DB : UPDATE application
+DB --> AppModel : updated
+AppModel --> AdminCtrl : application
+
+AdminCtrl -> Offer : autoUpdateStatus()
+Offer -> DB : Check if can reopen
+DB --> Offer : updated
+Offer --> AdminCtrl : status updated
+
+AdminCtrl -> Notif : notifyStudentApplicationRejected(app)
+Notif --> AdminCtrl : sent
+
+AdminCtrl --> Client : 200 OK
+Client --> Admin : Rejection success
+
+@enduml
+
+@startuml
+
+title Admin Generates Internship Agreement
+
+actor Admin
+participant "Client" as Client
+participant "Auth\nMiddleware" as Auth
+participant "AdminValidation\nController" as AdminCtrl
+participant "AgreementPdf\nService" as PdfSvc
+participant "InternshipAgreement\nModel" as Agreement
+
+database "Database" as DB
+storage "Storage" as Storage
+
+Admin -> Client : POST /admin/internships/{id}/generate-agreement
+Client -> Auth : Bearer Token
+Auth --> Client : Authenticated (admin)
+
+Client -> AdminCtrl : generateAgreement(internshipId)
+AdminCtrl -> AdminCtrl : Check same university
+AdminCtrl -> AdminCtrl : Check agreement doesn't exist
+
+AdminCtrl -> Agreement : create(internship_id, admin_id, generated_date, signature_status=true)
+Agreement -> DB : INSERT agreement
+DB --> Agreement : created
+Agreement --> AdminCtrl : agreement
+
+AdminCtrl -> PdfSvc : generate(agreement)
+PdfSvc -> Storage : Save PDF
+Storage --> PdfSvc : path
+PdfSvc --> AdminCtrl : pdfPath
+
+AdminCtrl -> Agreement : update(pdf_file=pdfPath)
+Agreement -> DB : UPDATE agreement
+DB --> Agreement : updated
+
+AdminCtrl --> Client : 201 Created + PDF URL
+Client --> Admin : Agreement generated
+
+@enduml

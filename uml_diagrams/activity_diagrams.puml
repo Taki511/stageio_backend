@@ -1,0 +1,252 @@
+@startuml
+
+title Student Application Process
+
+start
+:Student logs in;
+:POST /internship-offers/{id}/apply;
+
+if (Authenticated as student?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+if (Daily limit reached?) then (yes)
+  :Return 429 Too Many Requests;
+  stop
+endif
+
+if (Offer exists and open?) then (no)
+  :Return 404 or 400;
+  stop
+endif
+
+if (Already applied?) then (yes)
+  :Return 400 Bad Request;
+  stop
+endif
+
+if (Has active confirmed application\nthat is not refused by admin?) then (yes)
+  :Return 400 Bad Request;
+  stop
+endif
+
+if (Has CV?) then (no)
+  :Return 400 Bad Request;
+  stop
+endif
+
+:Create application\nstatus = PENDING;
+:Return 201 Created;
+stop
+
+@enduml
+
+@startuml
+
+title Recruiter Accepts / Refuses Application
+
+start
+:Recruiter logs in;
+
+if (Action = Accept?) then (yes)
+  :POST /applications/{id}/accept;
+else (no)
+  :POST /applications/{id}/refuse;
+endif
+
+if (Authenticated as recruiter?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+:Find application;
+
+if (Application exists?) then (no)
+  :Return 404 Not Found;
+  stop
+endif
+
+if (Owns the offer?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+if (Status = PENDING?) then (no)
+  :Return 400 Bad Request;
+  stop
+endif
+
+if (Action = Accept?) then (yes)
+  :Update status = ACCEPTED;
+  :Set accepted_at = now;
+  :Send acceptance notification;
+  :Return 200 OK;
+else (no)
+  :Update status = REFUSED;
+  :Auto-update offer status if closed;
+  :Send refusal notification;
+  :Return 200 OK;
+endif
+
+stop
+
+@enduml
+
+@startuml
+
+title Student Confirms Application
+
+start
+:Student logs in;
+:POST /applications/{id}/confirm;
+
+if (Authenticated as student?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+:Find application;
+
+if (Application exists?) then (no)
+  :Return 404 Not Found;
+  stop
+endif
+
+if (Owns the application?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+if (Status = ACCEPTED?) then (no)
+  :Return 400 Bad Request;
+  stop
+endif
+
+if (Already confirmed?) then (yes)
+  :Return 400 Bad Request;
+  stop
+endif
+
+:Update is_confirmed = true;
+:Set confirmed_at = now;
+
+:Auto-cancel other ACCEPTED\n(not confirmed) applications;
+:Auto-cancel all PENDING applications;
+
+:Return 200 OK + cancelled count;
+stop
+
+@enduml
+
+@startuml
+
+title Admin Validates Application
+
+start
+:Admin logs in;
+:POST /admin/applications/{id}/validate;
+
+if (Authenticated as admin?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+:Find application with student profile;
+
+if (Application exists?) then (no)
+  :Return 404 Not Found;
+  stop
+endif
+
+if (Same university?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+if (Status = ACCEPTED and is_confirmed?) then (no)
+  :Return 400 Bad Request;
+  stop
+endif
+
+if (Internship already exists?) then (yes)
+  :Return 400 Bad Request;
+  stop
+endif
+
+:Create Internship\nstart_date = offer.start_date\nend_date = start_date + duration\nstatus = ONGOING;
+
+:Update application status = VALIDATED;
+:Set admin_id = current admin;
+
+:Send validation notification;
+:Return 201 Created;
+stop
+
+@enduml
+
+@startuml
+
+title Admin Rejects Application
+
+start
+:Admin logs in;
+:POST /admin/applications/{id}/reject;
+
+if (Authenticated as admin?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+:Find application with student profile;
+
+if (Application exists?) then (no)
+  :Return 404 Not Found;
+  stop
+endif
+
+if (Same university?) then (no)
+  :Return 403 Forbidden;
+  stop
+endif
+
+if (Status = ACCEPTED?) then (no)
+  :Return 400 Bad Request;
+  stop
+endif
+
+if (Internship already exists?) then (yes)
+  :Return 400 Bad Request;
+  stop
+endif
+
+:Update application status = REFUSED;
+:Set admin_id = current admin;
+
+:Auto-update offer status\nif it was closed (reopen spot);
+
+:Send rejection notification;
+:Return 200 OK;
+stop
+
+@enduml
+
+@startuml
+
+title Auto-Actions System
+
+start
+:System trigger\n(Middleware / Command / Cron);
+
+:Cancel pending applications\nolder than 14 days with no recruiter response;
+
+:Cancel accepted applications\nolder than 14 days not confirmed by student;
+
+:Validate confirmed applications\nolder than 7 days not validated by admin;
+
+:Complete internships\nwhere end_date has passed;
+
+:Log results;
+stop
+
+@enduml

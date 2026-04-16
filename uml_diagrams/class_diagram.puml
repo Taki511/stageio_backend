@@ -1,0 +1,196 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+' Enums & Statuses
+class User {
+    +id: int
+    +name: string
+    +email: string
+    +password: string
+    +role: string
+    +rememberToken: string
+    +timestamps
+    --
+    +isStudent(): bool
+    +isRecruiter(): bool
+    +isAdmin(): bool
+}
+
+class StudentProfile {
+    +id: int
+    +user_id: int
+    +first_name: string
+    +last_name: string
+    +university_email: string
+    +field_of_study: string
+    +year_of_study: int
+    +timestamps
+}
+
+class Recruiter {
+    +id: int
+    +user_id: int
+    +first_name: string
+    +last_name: string
+    +company_email: string
+    +timestamps
+}
+
+class Administrator {
+    +id: int
+    +user_id: int
+    +first_name: string
+    +last_name: string
+    +university_email: string
+    +is_super_admin: bool
+    +timestamps
+    --
+    +isSuperAdmin(): bool
+}
+
+class CompanyProfile {
+    +id: int
+    +recruiter_id: int
+    +name: string
+    +description: string
+    +wilaya: string
+    +address: string
+    +logo: string
+    +timestamps
+}
+
+class InternshipOffer {
+    +id: int
+    +company_profile_id: int
+    +title: string
+    +description: string
+    +wilaya: string
+    +start_date: date
+    +internship_type: string
+    +duration: int
+    +status: string
+    +max_students: int
+    +deadline: date
+    +timestamps
+    --
+    +hasReachedMaxStudents(): bool
+    +hasDeadlinePassed(): bool
+    +autoUpdateStatus(): void
+    +isOpen(): bool
+}
+
+class Skill {
+    +id: int
+    +name: string
+    +timestamps
+}
+
+class StudentCV {
+    +id: int
+    +student_id: int
+    +first_name: string
+    +last_name: string
+    +age: int
+    +full_address: string
+    +phone_number: string
+    +academic_level: string
+    +email: string
+    +university_email: string
+    +github_link: string
+    +linkedin_link: string
+    +portfolio_link: string
+    +motivation_letter: text
+    +personal_info: text
+    +personal_photo: string
+    +timestamps
+}
+
+class Application {
+    +id: int
+    +student_id: int
+    +internship_offer_id: int
+    +student_cv_id: int
+    +application_date: date
+    +status: string
+    +accepted_at: datetime
+    +is_confirmed: bool
+    +confirmed_at: datetime
+    +admin_id: int
+    +cover_letter: text
+    +timestamps
+    --
+    +autoCancelOtherApplications(): void
+    +cancel(): void
+}
+
+class Internship {
+    +id: int
+    +application_id: int
+    +start_date: date
+    +end_date: date
+    +status: string
+    +timestamps
+    --
+    +hasEnded(): bool
+    +autoCompleteIfEnded(): void
+    +isCompleted(): bool
+}
+
+class InternshipAgreement {
+    +id: int
+    +internship_id: int
+    +admin_id: int
+    +generated_date: date
+    +signature_status: bool
+    +pdf_file: string
+    +timestamps
+}
+
+class PasswordResetToken {
+    +email: string
+    +token: string
+    +created_at: datetime
+}
+
+class PersonalAccessToken {
+    +tokenable_type: string
+    +tokenable_id: int
+    +name: string
+    +token: string
+    +abilities: text
+    +last_used_at: datetime
+    +expires_at: datetime
+    +timestamps
+}
+
+' Relationships
+User "1" -- "0..1" StudentProfile : has >
+User "1" -- "0..1" Recruiter : has >
+User "1" -- "0..1" Administrator : has >
+User "1" -- "0..1" StudentCV : has >
+
+Recruiter "1" -- "1" CompanyProfile : manages >
+CompanyProfile "1" -- "0..*" InternshipOffer : posts >
+
+InternshipOffer "0..*" -- "0..*" Skill : requires >
+InternshipOffer "1" -- "0..*" Application : receives >
+
+StudentCV "1" -- "0..*" Application : used in >
+User "1" -- "0..*" Application : submits >
+
+Application "1" -- "0..1" Internship : creates >
+Application "0..*" -- "1" User : validated/rejected by >
+
+Internship "1" -- "0..1" InternshipAgreement : has >
+User "1" -- "0..*" InternshipAgreement : generates >
+
+User "1" -- "0..*" PersonalAccessToken : owns >
+User "1" -- "0..*" PasswordResetToken : has >
+
+@enduml
