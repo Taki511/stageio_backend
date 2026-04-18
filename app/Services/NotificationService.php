@@ -207,11 +207,18 @@ class NotificationService
     public function notifyPasswordReset(User $user, string $resetToken): void
     {
         try {
+            // Generate frontend URL instead of API URL
+            $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
             $data = [
                 'user_name' => $user->name ?? 'User',
-                'reset_url' => rtrim(config('app.url'), '/') . '/api/reset-password?token=' . $resetToken . '&email=' . urlencode($user->email),
+                'reset_url' => rtrim($frontendUrl, '/') . '/reset-password?token=' . $resetToken . '&email=' . urlencode($user->email),
                 'expires_in' => '60 minutes',
             ];
+            
+            Log::info('Password reset URL generated', [
+                'user_email' => $user->email,
+                'reset_url' => $data['reset_url'],
+            ]);
             
             Mail::to($user->email)->send(new PasswordResetNotification($data));
             
